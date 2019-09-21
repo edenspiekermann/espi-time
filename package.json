@@ -1,0 +1,9 @@
+{
+  "name": "espi-time",
+  "version": "1.0.0",
+  "description": "Sync entries in Timing App on Mac to Teamleader",
+  "main": "index.js",
+  "repository": "https://github.com/edenspiekermann/espi-time",
+  "author": "Mike Pierce <m.pierce@edenspiekermann.com>",
+  "license": "MIT"
+}
