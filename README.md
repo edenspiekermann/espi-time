@@ -1,4 +1,4 @@
-# Espi Time
+# ESPI Time
 
 Sync your tasks in Timing to Teamleader seemlessly.
 
