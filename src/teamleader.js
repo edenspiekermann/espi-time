@@ -1,5 +1,6 @@
 import Axios from 'axios';
 import _ from 'lodash';
+import qs from 'query-string';
 import dotenvM from 'dotenv-manipulator';
 import self from './teamleader';
 require('dotenv').config();
@@ -12,6 +13,61 @@ const {
 } = process.env;
 
 export default {
+  initialize: () => {
+    const query = qs.stringify({
+      client_id: TEAMLEADER_CLIENT_ID,
+      response_type: 'code',
+      redirect_uri: 'https://github.com/edenspiekermann/espi-time',
+    });
+
+    console.log(
+      'Visit the following link and copy the URL that you are redirected to. Then run '
+    );
+
+    console.log(
+      'Then run the task again like this: babel-node . --auth REPLACE_WITH_URL'
+    );
+
+    console.log(`https://app.teamleader.eu/oauth2/authorize?${query}`);
+  },
+
+  authorize: async redirect_uri => {
+    try {
+      const { code } = qs.parse(redirect_uri.split('?')[1]);
+
+      const params = {
+        client_id: TEAMLEADER_CLIENT_ID,
+        client_secret: TEAMLEADER_CLIENT_SECRET,
+        code,
+        grant_type: 'authorization_code',
+        redirect_uri: 'https://github.com/edenspiekermann/espi-time',
+      };
+
+      const success = await Axios.post(
+        'https://app.teamleader.eu/oauth2/access_token',
+        {
+          client_id: TEAMLEADER_CLIENT_ID,
+          client_secret: TEAMLEADER_CLIENT_SECRET,
+          code,
+          grant_type: 'authorization_code',
+          redirect_uri: 'https://github.com/edenspiekermann/espi-time',
+        }
+      );
+
+      const { access_token, refresh_token } = success.data;
+
+      dotenvM.bulkUpdate(
+        {
+          TEAMLEADER_API_TOKEN: access_token,
+          TEAMLEADER_API_REFRESH: refresh_token,
+        },
+        () => console.log('Application authorized!')
+      );
+    } catch (error) {
+      console.log(error);
+    }
+  },
+
   refresh: async () => {
     try {
       const success = await Axios.post(

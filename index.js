@@ -22,16 +22,38 @@ const syncTimesheets = () => {
   console.log(ta);
 };
 
-const { sync: syncTask } = yargs.usage('Usage: -n <name>').option('s', {
-  alias: 'sync',
-  describe:
-    'The types of items synchronise.\r\n: Can either be "projects" or "timesheets"',
-  type: 'string',
-  demandOption: true,
-}).argv;
+const { initialize, authorize, execute } = yargs
+  .usage('Usage: -n <name>')
+  .option('init', {
+    alias: 'initialize',
+    describe: 'Generate authentication details for Teamleader access',
+    type: 'string',
+  })
+  .option('auth', {
+    alias: 'authorize',
+    describe:
+      'Redirect URI generated from init. Will authenticate the app and store details in .env',
+    type: 'string',
+    requiresArg: true,
+  })
+  .option('e', {
+    alias: 'execute',
+    describe:
+      'The task you want to execute.\r\n: Options are "projects" or "timesheets"',
+    type: 'string',
+    choices: ['projects', 'timesheets'],
+  }).argv;
 
-if (syncTask === 'projects') {
+if (initialize) {
+  tl.initialize();
+}
+
+if (authorize) {
+  tl.authorize(authorize);
+}
+
+if (execute === 'projects') {
   syncProjects();
-} else if (syncTask === 'timesheets') {
+} else if (execute === 'timesheets') {
   syncTimesheets();
 }
