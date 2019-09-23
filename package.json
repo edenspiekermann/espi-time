@@ -9,6 +9,12 @@
   "repository": "https://github.com/edenspiekermann/espi-time",
   "author": "Mike Pierce <m.pierce@edenspiekermann.com>",
   "license": "MIT",
+  "scripts": {
+    "initializeTL": "babel-node . --initializeTL",
+    "authorizeTL": "babel-node . --authorizeTL",
+    "projects": "babel-node . --projects",
+    "timesheets": "babel-node . --timesheets"
+  },
   "dependencies": {
     "axios": "^0.19.0",
     "dotenv": "^8.1.0",
