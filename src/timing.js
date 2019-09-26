@@ -33,7 +33,7 @@ export default {
 
     console.log({ root });
 
-    return root.data.self;
+    return root.self;
   },
 
   getProjects: async () => self.request(self.endpoint('/projects'), 'GET'),
@@ -43,7 +43,7 @@ export default {
       title: projectTitle,
     });
 
-    return (search.data && search.data[0]) || null;
+    return (search && search.data && search.data[0]) || null;
   },
 
   updateProject: async project =>
@@ -51,12 +51,14 @@ export default {
 
   insertProject: async project => {
     const normalizeProject = {
-      title: project.title || project.name,
+      title: `${project.title || project.name}`,
       parent:
         project.parent ||
         (project.parent === undefined && (await self.getRoot())) ||
         null,
     };
+
+    console.log({ normalizeProject });
 
     return await self.request(
       self.endpoint('/projects'),
@@ -67,10 +69,9 @@ export default {
 
   upsertProject: async project => {
     const exists = await self.getProject(project.title || project.name);
-    console.log({ exists });
 
-    if (exists) {
-      return self.updateProject(exists);
+    if (exists && exists.self) {
+      return exists;
     }
 
     return self.insertProject(project);

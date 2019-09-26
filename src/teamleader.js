@@ -1,6 +1,6 @@
 import Axios from 'axios';
 import _ from 'lodash';
-import qs from 'query-string';
+import qs from 'qs';
 import dotenvM from 'dotenv-manipulator';
 import self from './teamleader';
 require('dotenv').config();
@@ -63,22 +63,25 @@ export default {
         },
         () => console.log('Application authorized!')
       );
+
+      return;
     } catch (error) {
-      console.log(error);
+      self._logError(endpoint, params, error);
     }
+
+    return false;
   },
 
   refresh: async () => {
+    const endpoint = 'https://app.teamleader.eu/oauth2/access_token';
+
     try {
-      const success = await Axios.post(
-        'https://app.teamleader.eu/oauth2/access_token',
-        {
-          client_id: TEAMLEADER_CLIENT_ID,
-          client_secret: TEAMLEADER_CLIENT_SECRET,
-          refresh_token: TEAMLEADER_API_REFRESH,
-          grant_type: 'refresh_token',
-        }
-      );
+      const success = await Axios.post(endpoint, {
+        client_id: TEAMLEADER_CLIENT_ID,
+        client_secret: TEAMLEADER_CLIENT_SECRET,
+        refresh_token: TEAMLEADER_API_REFRESH,
+        grant_type: 'refresh_token',
+      });
 
       const { access_token, refresh_token } = success.data;
 
@@ -87,19 +90,25 @@ export default {
           TEAMLEADER_API_TOKEN: access_token,
           TEAMLEADER_API_REFRESH: refresh_token,
         },
-        () => null
+        () => console.log({ access_token, refresh_token })
       );
+
+      return;
     } catch (error) {
-      console.log(error);
+      self._logError(endpoint, {}, error);
     }
+
+    return false;
   },
 
   request: async (endpoint, params) => {
     try {
-      await self.refresh();
+      // await self.refresh();
 
       const success = await Axios.get(endpoint, {
-        params,
+        params: params,
+        paramsSerializer: params =>
+          qs.stringify(params, { arrayFormat: 'brackets' }),
         headers: {
           Authorization: `Bearer ${TEAMLEADER_API_TOKEN}`,
           Accept: 'application/json',
@@ -107,10 +116,12 @@ export default {
         },
       });
 
-      return success.data;
+      return success.data.data;
     } catch (error) {
-      console.log(error);
+      self._logError(endpoint, params, error);
     }
+
+    return false;
   },
 
   endpoint: (resource, action) =>
@@ -118,14 +129,15 @@ export default {
 
   getProjects: async () =>
     await self.request(self.endpoint('projects', 'list'), {
-      page: { size: 999 },
+      filter: { status: 'active' },
+      page: { size: 100 },
     }),
 
   getMilestones: async projectId => {
-    let params = { page: { size: 999 } };
+    let params = { filter: { status: 'open' }, page: { size: 100 } };
 
     if (projectId) {
-      params['filter'] = { project_id: projectId };
+      params['filter']['project_id'] = projectId;
     }
 
     return await self.request(self.endpoint('milestones', 'list'), params);
@@ -143,4 +155,9 @@ export default {
     _.filter(self.getTimesheets(), { id: timesheetId }),
 
   upsertTimesheet: timesheet => {},
+
+  _logError: (endpoint, params, error) => {
+    const { status, statusText } = error.response;
+    console.log({ endpoint, params, status, statusText });
+  },
 };
