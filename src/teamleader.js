@@ -1,6 +1,7 @@
-import Axios from 'axios';
-import _ from 'lodash';
+import axios from 'axios';
 import qs from 'qs';
+import _ from 'lodash';
+import chalk from 'chalk';
 import dotenvM from 'dotenv-manipulator';
 import self from './teamleader';
 require('dotenv').config();
@@ -10,40 +11,42 @@ const {
   TEAMLEADER_CLIENT_SECRET,
   TEAMLEADER_API_TOKEN,
   TEAMLEADER_API_REFRESH,
+  TEAMLEADER_USER_ID,
+  TEAMLEADER_WORK_TYPE_ID,
 } = process.env;
+const log = console.log;
+const api = axios.create({
+  headers: {
+    Authorization: `Bearer ${TEAMLEADER_API_TOKEN}`,
+    Accept: 'application/json',
+    'Content-Type': 'application/json',
+  },
+});
 
 export default {
   initialize: () => {
-    const query = qs.stringify({
+    const query = JSON.stringify({
       client_id: TEAMLEADER_CLIENT_ID,
       response_type: 'code',
       redirect_uri: 'https://github.com/edenspiekermann/espi-time',
     });
 
-    console.log(
-      'Visit the following link and copy the URL that you are redirected to. Then run '
-    );
+    log(`${chalk.yellow('Starting:')} Visit the following link...`);
 
     console.log(
-      'Then run the task again like this: babel-node . --auth REPLACE_WITH_URL'
+      chalk.magenta(`https://app.teamleader.eu/oauth2/authorize?${query}`)
     );
 
-    console.log(`https://app.teamleader.eu/oauth2/authorize?${query}`);
+    log(`Then copy the URL that you are redirected to. After that run...`);
+
+    log(`${chalk.gray(`yarn authorizeTL ${chalk.bold('REPLACE_WITH_URL')}`)}`);
   },
 
   authorize: async redirect_uri => {
     try {
-      const { code } = qs.parse(redirect_uri.split('?')[1]);
+      const { code } = JSON.parse(redirect_uri.split('?')[1]);
 
-      const params = {
-        client_id: TEAMLEADER_CLIENT_ID,
-        client_secret: TEAMLEADER_CLIENT_SECRET,
-        code,
-        grant_type: 'authorization_code',
-        redirect_uri: 'https://github.com/edenspiekermann/espi-time',
-      };
-
-      const success = await Axios.post(
+      const success = await axios.post(
         'https://app.teamleader.eu/oauth2/access_token',
         {
           client_id: TEAMLEADER_CLIENT_ID,
@@ -61,22 +64,41 @@ export default {
           TEAMLEADER_API_TOKEN: access_token,
           TEAMLEADER_API_REFRESH: refresh_token,
         },
-        () => console.log('Application authorized!')
+        () => log(chalk.green('Application authorized!'))
       );
 
       return;
     } catch (error) {
-      self._logError(endpoint, params, error);
+      self._logError(endpoint, 'POST', params, error);
     }
 
     return false;
+  },
+
+  me: async () => {
+    const me = await self.request(self.endpoint('users', 'me'), 'GET');
+    const workTypes = await self.request(
+      self.endpoint('workTypes', 'list'),
+      'GET'
+    );
+    const workType = _.head(_.filter(workTypes, { name: me.function }));
+
+    dotenvM.bulkUpdate(
+      {
+        TEAMLEADER_USER_ID: me.id,
+        TEAMLEADER_WORK_TYPE_ID: workType.id,
+      },
+      () => log(chalk.green('User details saved!'))
+    );
+
+    return;
   },
 
   refresh: async () => {
     const endpoint = 'https://app.teamleader.eu/oauth2/access_token';
 
     try {
-      const success = await Axios.post(endpoint, {
+      const success = await axios.post(endpoint, {
         client_id: TEAMLEADER_CLIENT_ID,
         client_secret: TEAMLEADER_CLIENT_SECRET,
         refresh_token: TEAMLEADER_API_REFRESH,
@@ -90,35 +112,29 @@ export default {
           TEAMLEADER_API_TOKEN: access_token,
           TEAMLEADER_API_REFRESH: refresh_token,
         },
-        () => console.log({ access_token, refresh_token })
+        () => log(chalk.green('Authorization refreshed!'))
       );
 
       return;
     } catch (error) {
-      self._logError(endpoint, {}, error);
+      self._logError(endpoint, 'POST', {}, error);
     }
 
     return false;
   },
 
-  request: async (endpoint, params) => {
+  request: async (endpoint, method, params = {}) => {
     try {
-      // await self.refresh();
-
-      const success = await Axios.get(endpoint, {
-        params: params,
-        paramsSerializer: params =>
-          qs.stringify(params, { arrayFormat: 'brackets' }),
-        headers: {
-          Authorization: `Bearer ${TEAMLEADER_API_TOKEN}`,
-          Accept: 'application/json',
-          'Content-Type': 'application/json',
-        },
+      const success = await api({
+        url: endpoint,
+        method,
+        data: params,
+        paramsSerializer: params => JSON.stringify(params),
       });
 
       return success.data.data;
     } catch (error) {
-      self._logError(endpoint, params, error);
+      self._logError(endpoint, method, params, error);
     }
 
     return false;
@@ -128,36 +144,89 @@ export default {
     resource && action && `https://api.teamleader.eu/${resource}.${action}`,
 
   getProjects: async () =>
-    await self.request(self.endpoint('projects', 'list'), {
+    self.request(self.endpoint('projects', 'list'), 'GET', {
       filter: { status: 'active' },
-      page: { size: 100 },
     }),
 
-  getMilestones: async projectId => {
-    let params = { filter: { status: 'open' }, page: { size: 100 } };
+  getMilestones: async (projectId = null) => {
+    let milestones = await self.request(
+      self.endpoint('milestones', 'list'),
+      'GET',
+      {
+        filter: { status: 'open' },
+        page: { size: 100 },
+      }
+    );
 
     if (projectId) {
-      params['filter']['project_id'] = projectId;
+      milestones = _.filter(milestones, { project: { id: projectId } });
     }
 
-    return await self.request(self.endpoint('milestones', 'list'), params);
+    return milestones;
   },
 
-  getTimesheets: () => {},
+  getTimesheets: async () =>
+    self.request(self.endpoint('timeTracking', 'list'), 'GET', {
+      filter: { user_id: TEAMLEADER_USER_ID },
+    }),
 
-  getProject: projectTitle =>
-    _.head(_.filter(self.getProjects(), { title: projectTitle })),
+  getLastTimesheet: async () => {
+    const lastTimesheets = await self.request(
+      self.endpoint('timeTracking', 'list'),
+      'GET',
+      {
+        filter: { user_id: TEAMLEADER_USER_ID },
+        page: { size: 1 },
+      }
+    );
+    const lastTimesheet = _.head(lastTimesheets);
+    const date = new Date(lastTimesheet.started_on);
 
-  getMilestone: milestoneId =>
+    date.setHours(0, 0, 0);
+    dotenvM.bulkUpdate(
+      {
+        TEAMLEADER_LAST_SYNC: date.toISOString(),
+      },
+      () => log(chalk.green('Last timesheet recorded'))
+    );
+
+    return lastTimesheet;
+  },
+
+  getProject: async projectTitle =>
+    _.head(
+      _.filter(
+        await self.getProjects(),
+        obj => !obj.title.includes(projectTitle)
+      )
+    ),
+
+  getMilestone: async milestoneId =>
     _.filter(self.getMilestones(), { id: milestoneId }),
 
-  getTimesheet: timesheetId =>
+  getTimesheet: async timesheetId =>
     _.filter(self.getTimesheets(), { id: timesheetId }),
 
-  upsertTimesheet: timesheet => {},
+  insertTimesheet: async timesheet => {
+    const inserted = await self.request(
+      self.endpoint('timeTracking', 'add'),
+      'POST',
+      {
+        work_type_id: TEAMLEADER_WORK_TYPE_ID,
+        ...timesheet,
+      }
+    );
 
-  _logError: (endpoint, params, error) => {
-    const { status, statusText } = error.response;
-    console.log({ endpoint, params, status, statusText });
+    log(`${chalk.green('Added timesheet:')} ${timesheet.description}`);
+
+    return inserted;
+  },
+
+  _logError: (endpoint, method, params, error) => {
+    log(
+      `${chalk.red(
+        error.response.statusText
+      )}: ${endpoint} ${method} ${JSON.stringify(params)}`
+    );
   },
 };
