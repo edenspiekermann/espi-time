@@ -4,8 +4,6 @@ import chalk from 'chalk';
 import tl from './src/teamleader';
 import ta from './src/timing';
 
-const log = console.log;
-
 const syncProjects = async () => {
   const tlProjects = await tl.getProjects();
 

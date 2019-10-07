@@ -5,6 +5,7 @@ import chalk from 'chalk';
 import self from './timing';
 
 const { TIMING_API_KEY, TIMING_NAMESPACE, TEAMLEADER_LAST_SYNC } = process.env;
+
 const log = console.log;
 const api = axios.create({
   headers: {
