@@ -33,7 +33,7 @@ const syncTimesheets = async () => {
   _.each(tasksSince, async task => {
     const { title, notes, start_date, end_date, project } = task;
     const [entry, prev] = _.split((notes || '').slice(-41), '|');
-    const typesMap = { ms: 'milestone', pr: 'company' };
+    const typesMap = { ms: 'milestone', pr: 'company', co: 'company' };
     const [type, id] = _.split(project.title.slice(-39), '|');
 
     if (entry !== '— te' && type && id) {
