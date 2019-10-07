@@ -1,5 +1,4 @@
 import axios from 'axios';
-import qs from 'qs';
 import _ from 'lodash';
 import chalk from 'chalk';
 import dotenvM from 'dotenv-manipulator';

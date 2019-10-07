@@ -1,6 +1,5 @@
 import _ from 'lodash';
 import yargs from 'yargs';
-import chalk from 'chalk';
 import tl from './src/teamleader';
 import ta from './src/timing';
 
