@@ -34,7 +34,7 @@ export default {
     log(`${chalk.yellow('Starting:')} Visit the following link...`);
 
     console.log(
-      chalk.magenta(`https://app.teamleader.eu/oauth2/authorize?${query}`)
+      chalk.magenta(`https://focus.teamleader.eu/oauth2/authorize?${query}`)
     );
 
     log(`Then copy the URL that you are redirected to. After that run...`);
@@ -47,7 +47,7 @@ export default {
       const { code } = JSON.parse(redirect_uri.split('?')[1]);
 
       const success = await axios.post(
-        'https://app.teamleader.eu/oauth2/access_token',
+        'https://focus.teamleader.eu/oauth2/access_token',
         {
           client_id: TEAMLEADER_CLIENT_ID,
           client_secret: TEAMLEADER_CLIENT_SECRET,
@@ -95,7 +95,7 @@ export default {
   },
 
   refresh: async () => {
-    const endpoint = 'https://app.teamleader.eu/oauth2/access_token';
+    const endpoint = 'https://focus.teamleader.eu/oauth2/access_token';
 
     try {
       const success = await axios.post(endpoint, {
@@ -141,7 +141,7 @@ export default {
   },
 
   endpoint: (resource, action) =>
-    resource && action && `https://api.teamleader.eu/${resource}.${action}`,
+    resource && action && `https://api.focus.teamleader.eu/${resource}.${action}`,
 
   getProjects: async () =>
     self.request(self.endpoint('projects', 'list'), 'GET', {

@@ -43,7 +43,7 @@ In the app type `yarn timesheets` Tasks you have configured in Timing will be sy
 ## References
 
 - [Timing App API docs](https://web.timingapp.com/docs/)
-- [Teamleader API docs](https://developer.teamleader.eu/)
+- [Teamleader API docs](https://developer.focus.teamleader.eu/)
 
 ---
 
